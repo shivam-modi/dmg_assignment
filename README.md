@@ -54,8 +54,11 @@ class via Testcontainers. Unit tests (`pricing`/`refund` service logic) don't ne
 
 The concurrency suite (`ConcurrentSeatBookingIntegrationTest`) is the headline artifact: it fires
 12 concurrent requests at the same seat and asserts exactly one succeeds, races two overlapping
-multi-seat holds to confirm clean deadlock-free partial failure, and simulates a
-hold-expiry-sweep-vs-confirm race to confirm it resolves to exactly one outcome.
+multi-seat holds to confirm clean deadlock-free partial failure, and verifies that confirm and the
+hold-expiry sweep running concurrently against an already-expired hold never corrupt each other's
+state (confirm can't resurrect an expired hold; the sweep's release and confirm's rejection agree).
+`PaymentFailureIntegrationTest` covers the declined-payment path via a substitute gateway bean,
+since `SimulatedPaymentGateway` always succeeds by design.
 
 ## API overview
 

@@ -173,8 +173,17 @@ class ConcurrentSeatBookingIntegrationTest extends AbstractIntegrationTest {
         assertThat(loserSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
     }
 
+    /**
+     * With the hold already expired before either thread starts, confirm's fresh under-lock
+     * re-check (holdExpiresAt.isAfter(now)) deterministically fails every run — this is NOT a
+     * genuine 50/50 race, and asserting otherwise would be a false claim (sub-second interleaving
+     * windows aren't reproducible in an automated suite anyway). What this deterministically proves
+     * is the property that actually matters: confirm can never resurrect an already-expired hold
+     * regardless of whether the expiry sweep has run yet, and the two paths never corrupt shared
+     * state when they execute concurrently against the same booking.
+     */
     @Test
-    void sweepAndConfirmRaceResolveToExactlyOneOutcome() throws Exception {
+    void confirmCannotResurrectAnAlreadyExpiredHoldWhileSweepReleasesItConcurrently() throws Exception {
         String adminToken = adminLogin();
         Long showId = createShowFixture(adminToken);
         Long seatId = seatIdsFor(showId).get(4);
@@ -222,11 +231,8 @@ class ConcurrentSeatBookingIntegrationTest extends AbstractIntegrationTest {
         Booking finalBooking = bookingRepository.findById(booking.id()).orElseThrow();
         ShowSeat finalSeat = showSeatRepository.findById(seatId).orElseThrow();
 
-        if (finalBooking.getStatus() == BookingStatus.CONFIRMED) {
-            assertThat(finalSeat.getStatus()).isEqualTo(ShowSeatStatus.BOOKED);
-        } else {
-            assertThat(finalBooking.getStatus()).isEqualTo(BookingStatus.EXPIRED);
-            assertThat(finalSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
-        }
+        assertThat(finalBooking.getStatus()).isEqualTo(BookingStatus.EXPIRED);
+        assertThat(finalSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
+        assertThat(results).anyMatch(ConflictException.class::isInstance);
     }
 }
