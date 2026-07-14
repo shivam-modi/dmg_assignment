@@ -2,7 +2,7 @@ package com.dmg.moviebooking.refund.controller;
 
 import com.dmg.moviebooking.refund.dto.RefundPolicyRuleDtos.RefundPolicyRuleRequest;
 import com.dmg.moviebooking.refund.dto.RefundPolicyRuleDtos.RefundPolicyRuleResponse;
-import com.dmg.moviebooking.refund.service.RefundService;
+import com.dmg.moviebooking.refund.service.RefundPolicyAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,21 +24,21 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminRefundPolicyController {
 
-    private final RefundService refundService;
+    private final RefundPolicyAdminService refundPolicyAdminService;
 
     @GetMapping
     public List<RefundPolicyRuleResponse> list() {
-        return refundService.findAllPolicyRules().stream().map(RefundPolicyRuleResponse::from).toList();
+        return refundPolicyAdminService.findAll().stream().map(RefundPolicyRuleResponse::from).toList();
     }
 
     @PutMapping
     public RefundPolicyRuleResponse upsert(@Valid @RequestBody RefundPolicyRuleRequest request) {
-        return RefundPolicyRuleResponse.from(refundService.upsertPolicyRule(request));
+        return RefundPolicyRuleResponse.from(refundPolicyAdminService.upsert(request));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        refundService.deletePolicyRule(id);
+        refundPolicyAdminService.delete(id);
     }
 }
