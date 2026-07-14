@@ -209,9 +209,11 @@ systems." Both use the same two patterns:
    `status='HELD' AND hold_expires_at < now()`; the reminder claim only touches rows where
    `reminded_at IS NULL`. Whichever transaction's conditional UPDATE actually matches a row wins the
    right to act on it — a losing transaction's UPDATE simply affects zero rows, a clean no-op
-   rather than corrupted state. This is also what makes the sweep-vs-confirm race safe (see the
-   third concurrency test): confirm re-checks status/expiry fresh under its own lock, so whichever
-   of {confirm, sweep} gets there first "wins" and the other becomes a no-op.
+   rather than corrupted state. This is also what makes the sweep-vs-confirm race safe: confirm
+   re-checks status/expiry fresh under its own lock, so whichever of {confirm, sweep} gets there
+   first "wins" and the other becomes a no-op (verified deterministically — sequencing rather than
+   literally racing two threads — in `ConcurrentSeatBookingIntegrationTest`; see that test's own
+   comment for why racing it on separate threads turned out to add flakiness, not rigor).
 2. **`FOR UPDATE SKIP LOCKED`, one booking per transaction** (`HoldExpiryReleaseService`). If any of
    a booking's seats are currently locked by another transaction (almost certainly an in-flight
    confirm), the sweep gets back fewer rows than expected and skips the *entire* booking this tick
