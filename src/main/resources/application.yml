@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: movie-booking-system
+  datasource:
+    url: jdbc:postgresql://localhost:5433/moviebooking
+    username: moviebooking
+    password: moviebooking
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  jwt:
+    # Dev-only default. Override via JWT_SECRET env var for anything beyond local dev.
+    secret: ${JWT_SECRET:dev-only-please-override-this-secret-min-32-bytes-long}
+    expiration-minutes: 60
+  booking:
+    hold-duration-minutes: 5
+    hold-sweep-interval-ms: 30000
+    hold-sweep-batch-size: 50
+  notification:
+    reminder-window-hours: 2
+    reminder-scan-interval-ms: 60000
+    reminder-scan-batch-size: 50
+  seed:
+    admin-email: admin@moviebooking.local
+    admin-password: ${ADMIN_SEED_PASSWORD:Admin@12345}
