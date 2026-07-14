@@ -1,6 +1,7 @@
 package com.dmg.moviebooking.refund.service;
 
 import com.dmg.moviebooking.common.exception.ResourceNotFoundException;
+import com.dmg.moviebooking.refund.dto.RefundPolicyRuleDtos.RefundPolicyRuleRequest;
 import com.dmg.moviebooking.refund.entity.Refund;
 import com.dmg.moviebooking.refund.entity.RefundPolicyRule;
 import com.dmg.moviebooking.refund.entity.RefundStatus;
@@ -46,5 +47,29 @@ public class RefundService {
                 .createdAt(Instant.now())
                 .build();
         return refundRepository.save(refund);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RefundPolicyRule> findAllPolicyRules() {
+        return refundPolicyRuleRepository.findAllByOrderByMinHoursBeforeShowDesc();
+    }
+
+    /** Upsert keyed by minHoursBeforeShow (unique) — policy tiers are config, not free-form records. */
+    @Transactional
+    public RefundPolicyRule upsertPolicyRule(RefundPolicyRuleRequest request) {
+        RefundPolicyRule rule = refundPolicyRuleRepository.findAllByOrderByMinHoursBeforeShowDesc().stream()
+                .filter(r -> r.getMinHoursBeforeShow().equals(request.minHoursBeforeShow()))
+                .findFirst()
+                .orElseGet(() -> RefundPolicyRule.builder().minHoursBeforeShow(request.minHoursBeforeShow()).build());
+        rule.setRefundPercentage(request.refundPercentage());
+        return refundPolicyRuleRepository.save(rule);
+    }
+
+    @Transactional
+    public void deletePolicyRule(Long id) {
+        if (!refundPolicyRuleRepository.existsById(id)) {
+            throw ResourceNotFoundException.of("RefundPolicyRule", id);
+        }
+        refundPolicyRuleRepository.deleteById(id);
     }
 }
