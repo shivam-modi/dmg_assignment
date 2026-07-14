@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The headline correctness guarantee: concurrent requests for the same seat(s) must serialize
@@ -174,16 +175,20 @@ class ConcurrentSeatBookingIntegrationTest extends AbstractIntegrationTest {
     }
 
     /**
-     * With the hold already expired before either thread starts, confirm's fresh under-lock
-     * re-check (holdExpiresAt.isAfter(now)) deterministically fails every run — this is NOT a
-     * genuine 50/50 race, and asserting otherwise would be a false claim (sub-second interleaving
-     * windows aren't reproducible in an automated suite anyway). What this deterministically proves
-     * is the property that actually matters: confirm can never resurrect an already-expired hold
-     * regardless of whether the expiry sweep has run yet, and the two paths never corrupt shared
-     * state when they execute concurrently against the same booking.
+     * Deliberately sequential, not concurrent: with the hold already expired, confirm's fresh
+     * under-lock re-check (holdExpiresAt.isAfter(now)) fails every time regardless of timing, so
+     * firing it on a separate thread against the sweep would only add flakiness without proving
+     * anything stronger — an earlier version of this test raced the two on separate threads and
+     * turned out to be genuinely flaky: if confirm's (blocking) lock was still held when the
+     * sweep's SKIP LOCKED query ran, the sweep correctly saw the row as contended and skipped it
+     * for that tick (by design — see HoldExpiryReleaseService), leaving the booking PENDING_PAYMENT
+     * until a later tick. That's correct production behavior (the sweep runs periodically and
+     * retries), but it makes a single one-shot concurrent assertion nondeterministic. Sequencing
+     * confirm-then-sweep proves the two properties that actually matter deterministically: an
+     * expired hold can't be confirmed, and the sweep reliably cleans it up once uncontended.
      */
     @Test
-    void confirmCannotResurrectAnAlreadyExpiredHoldWhileSweepReleasesItConcurrently() throws Exception {
+    void confirmCannotResurrectAnAlreadyExpiredHoldAndSweepThenReleasesIt() throws Exception {
         String adminToken = adminLogin();
         Long showId = createShowFixture(adminToken);
         Long seatId = seatIdsFor(showId).get(4);
@@ -196,43 +201,14 @@ class ConcurrentSeatBookingIntegrationTest extends AbstractIntegrationTest {
         seat.setHoldExpiresAt(Instant.now().minusSeconds(1));
         showSeatRepository.saveAndFlush(seat);
 
-        CountDownLatch ready = new CountDownLatch(2);
-        CountDownLatch go = new CountDownLatch(1);
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        ConcurrentLinkedQueue<Object> results = new ConcurrentLinkedQueue<>();
+        assertThatThrownBy(() -> bookingService.confirm(userId, booking.id(), new ConfirmRequest(null)))
+                .isInstanceOf(ConflictException.class);
 
-        pool.submit(() -> {
-            ready.countDown();
-            try {
-                go.await();
-                results.add(bookingService.confirm(userId, booking.id(), new ConfirmRequest(null)));
-            } catch (Exception ex) {
-                results.add(ex);
-            }
-            return null;
-        });
-        pool.submit(() -> {
-            ready.countDown();
-            try {
-                go.await();
-                holdExpiryReleaseService.releaseIfExpired(booking.id());
-                results.add("swept");
-            } catch (Exception ex) {
-                results.add(ex);
-            }
-            return null;
-        });
-
-        ready.await(10, TimeUnit.SECONDS);
-        go.countDown();
-        pool.shutdown();
-        assertThat(pool.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
+        holdExpiryReleaseService.releaseIfExpired(booking.id());
 
         Booking finalBooking = bookingRepository.findById(booking.id()).orElseThrow();
         ShowSeat finalSeat = showSeatRepository.findById(seatId).orElseThrow();
-
         assertThat(finalBooking.getStatus()).isEqualTo(BookingStatus.EXPIRED);
         assertThat(finalSeat.getStatus()).isEqualTo(ShowSeatStatus.AVAILABLE);
-        assertThat(results).anyMatch(ConflictException.class::isInstance);
     }
 }
