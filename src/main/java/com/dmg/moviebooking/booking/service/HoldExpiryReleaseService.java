@@ -1,5 +1,6 @@
 package com.dmg.moviebooking.booking.service;
 
+import com.dmg.moviebooking.booking.entity.BookingStatus;
 import com.dmg.moviebooking.booking.entity.ShowSeat;
 import com.dmg.moviebooking.booking.entity.ShowSeatStatus;
 import com.dmg.moviebooking.booking.repository.BookingRepository;
@@ -28,7 +29,7 @@ public class HoldExpiryReleaseService {
 
     @Transactional
     public void releaseIfExpired(Long bookingId) {
-        List<Long> expectedIds = showSeatRepository.findHeldSeatIdsByBookingId(bookingId);
+        List<Long> expectedIds = showSeatRepository.findHeldSeatIdsByBookingId(bookingId, ShowSeatStatus.HELD);
         if (expectedIds.isEmpty()) {
             return;
         }
@@ -55,7 +56,7 @@ public class HoldExpiryReleaseService {
         }
 
         if (anyExpired) {
-            bookingRepository.expireIfStillPending(bookingId);
+            bookingRepository.expireIfStillPending(bookingId, BookingStatus.PENDING_PAYMENT, BookingStatus.EXPIRED);
         }
     }
 }

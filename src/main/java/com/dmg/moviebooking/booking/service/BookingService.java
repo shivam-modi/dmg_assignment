@@ -128,7 +128,7 @@ public class BookingService {
             throw new ConflictException("Booking is not awaiting payment");
         }
 
-        List<Long> expectedSeatIds = showSeatRepository.findHeldSeatIdsByBookingId(bookingId);
+        List<Long> expectedSeatIds = showSeatRepository.findHeldSeatIdsByBookingId(bookingId, ShowSeatStatus.HELD);
         List<ShowSeat> seats = lockSeatsByBookingForUpdate(bookingId);
         Instant now = Instant.now();
         boolean stillValid = seats.size() == expectedSeatIds.size()

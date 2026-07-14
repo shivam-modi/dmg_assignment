@@ -3,6 +3,7 @@ package com.dmg.moviebooking.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -61,7 +62,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                        .requestMatchers(HttpMethod.GET,
                                 "/api/v1/cities", "/api/v1/cities/*/theaters", "/api/v1/movies",
                                 "/api/v1/shows", "/api/v1/shows/*/seats").permitAll()
                         .anyRequest().authenticated())

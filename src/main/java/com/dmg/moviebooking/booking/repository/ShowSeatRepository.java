@@ -1,6 +1,7 @@
 package com.dmg.moviebooking.booking.repository;
 
 import com.dmg.moviebooking.booking.entity.ShowSeat;
+import com.dmg.moviebooking.booking.entity.ShowSeatStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -38,8 +39,8 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, Long> {
      * back than expected, another transaction (almost certainly an in-flight confirm) holds some of
      * them, and the sweep must skip the whole booking rather than partially release it.
      */
-    @Query("SELECT s.id FROM ShowSeat s WHERE s.heldByBookingId = :bookingId AND s.status = com.dmg.moviebooking.booking.entity.ShowSeatStatus.HELD")
-    List<Long> findHeldSeatIdsByBookingId(@Param("bookingId") Long bookingId);
+    @Query("SELECT s.id FROM ShowSeat s WHERE s.heldByBookingId = :bookingId AND s.status = :held")
+    List<Long> findHeldSeatIdsByBookingId(@Param("bookingId") Long bookingId, @Param("held") ShowSeatStatus held);
 
     /**
      * Non-blocking variant for the sweep: skips rows a concurrent transaction (e.g. an in-flight

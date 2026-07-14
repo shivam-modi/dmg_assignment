@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -97,7 +98,7 @@ public abstract class AbstractIntegrationTest {
 
     /** Returns the show's ShowSeat ids in seat order (matches the A1..A4,B1..B4 layout above). */
     protected List<Long> seatIdsFor(Long showId) throws Exception {
-        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/shows/" + showId + "/seats"))
+        String response = mockMvc.perform(get("/api/v1/shows/" + showId + "/seats"))
                 .andReturn().getResponse().getContentAsString();
         JsonNode seats = objectMapper.readTree(response);
         List<Long> ids = new ArrayList<>();

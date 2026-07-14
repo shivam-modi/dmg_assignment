@@ -1,6 +1,7 @@
 package com.dmg.moviebooking.notification.scheduler;
 
 import com.dmg.moviebooking.booking.entity.Booking;
+import com.dmg.moviebooking.booking.entity.BookingStatus;
 import com.dmg.moviebooking.booking.repository.BookingRepository;
 import com.dmg.moviebooking.notification.NotificationProperties;
 import com.dmg.moviebooking.notification.service.ReminderService;
@@ -26,7 +27,7 @@ public class ReminderSweepJob {
         Instant now = Instant.now();
         Instant windowEnd = now.plusSeconds(notificationProperties.reminderWindowHours() * 3600);
         List<Booking> candidates = bookingRepository.findReminderCandidates(
-                now, windowEnd, PageRequest.of(0, notificationProperties.reminderScanBatchSize()));
+                BookingStatus.CONFIRMED, now, windowEnd, PageRequest.of(0, notificationProperties.reminderScanBatchSize()));
         for (Booking booking : candidates) {
             reminderService.sendReminderIfClaimed(booking.getId());
         }
