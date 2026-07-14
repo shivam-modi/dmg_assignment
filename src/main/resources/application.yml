@@ -33,6 +33,7 @@ app:
     hold-duration-minutes: 5
     hold-sweep-interval-ms: 30000
     hold-sweep-batch-size: 50
+    lock-timeout-ms: 3000
   notification:
     reminder-window-hours: 2
     reminder-scan-interval-ms: 60000

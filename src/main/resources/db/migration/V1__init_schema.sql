@@ -116,11 +116,13 @@ CREATE TABLE show_seats (
 CREATE INDEX idx_show_seats_hold_expiry ON show_seats (hold_expires_at) WHERE status = 'HELD';
 
 CREATE TABLE booking_seats (
+    id               BIGSERIAL PRIMARY KEY,
     booking_id       BIGINT NOT NULL REFERENCES bookings (id),
     show_seat_id     BIGINT NOT NULL REFERENCES show_seats (id),
     price_at_booking NUMERIC(10, 2) NOT NULL,
-    PRIMARY KEY (booking_id, show_seat_id)
+    UNIQUE (booking_id, show_seat_id)
 );
+CREATE INDEX idx_booking_seats_booking_id ON booking_seats (booking_id);
 
 CREATE TABLE payments (
     id           BIGSERIAL PRIMARY KEY,

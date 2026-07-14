@@ -2,6 +2,7 @@ package com.dmg.moviebooking.common;
 
 import com.dmg.moviebooking.common.exception.BusinessRuleViolationException;
 import com.dmg.moviebooking.common.exception.ConflictException;
+import com.dmg.moviebooking.common.exception.PaymentDeclinedException;
 import com.dmg.moviebooking.common.exception.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessRuleViolationException.class)
     public ResponseEntity<ApiError> handleBusinessRule(BusinessRuleViolationException ex, HttpServletRequest req) {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(PaymentDeclinedException.class)
+    public ResponseEntity<ApiError> handlePaymentDeclined(PaymentDeclinedException ex, HttpServletRequest req) {
+        return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), req);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
