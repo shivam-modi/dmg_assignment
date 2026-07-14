@@ -132,21 +132,21 @@ sequenceDiagram
     participant A as Client A
     participant B as Client B
     participant Svc as BookingService
-    participant DB as Postgres (show_seats)
+    participant DB as Postgres_show_seats
 
     A->>Svc: hold(showId, [seat 42])
-    Svc->>DB: BEGIN; SELECT seat 42 FOR UPDATE
+    Svc->>DB: BEGIN, SELECT seat 42 FOR UPDATE
     activate DB
     Note over DB: seat 42 locked by A's transaction
     B->>Svc: hold(showId, [seat 42])
-    Svc->>DB: BEGIN; SELECT seat 42 FOR UPDATE
-    Note over DB: B's transaction blocks — waits for A's lock
-    Svc->>DB: A: seat AVAILABLE -> HELD, expiresAt=+5m
-    Svc->>DB: COMMIT (A)
+    Svc->>DB: BEGIN, SELECT seat 42 FOR UPDATE
+    Note over DB: B's transaction blocks, waits for A's lock
+    Svc->>DB: A's seat AVAILABLE to HELD, expiresAt=+5m
+    Svc->>DB: COMMIT A
     deactivate DB
     DB-->>Svc: B's lock acquired, seat now HELD
-    Svc-->>B: 409 Conflict — seat no longer available
-    Svc-->>A: 200 OK — booking PENDING_PAYMENT
+    Svc-->>B: 409 Conflict, seat no longer available
+    Svc-->>A: 200 OK, booking PENDING_PAYMENT
 ```
 
 ### Confirm — payment + async notification
@@ -156,25 +156,25 @@ sequenceDiagram
     participant C as Customer
     participant Svc as BookingService
     participant DB as Postgres
-    participant Pay as PaymentGateway (simulated)
-    participant Evt as Spring Events
+    participant Pay as SimulatedPaymentGateway
+    participant Evt as SpringEvents
     participant Listener as BookingNotificationListener
 
-    C->>Svc: confirm(bookingId, discountCode?)
-    Svc->>DB: SELECT booking's show_seats FOR UPDATE
-    Svc->>Svc: re-check status=HELD, ownership, expiry — freshly, under the lock
-    alt hold expired (lost race with sweep)
+    C->>Svc: confirm(bookingId, discountCode)
+    Svc->>DB: SELECT booking seats FOR UPDATE
+    Svc->>Svc: re-check status HELD, ownership, expiry, freshly under the lock
+    alt hold expired, lost race with sweep
         Svc-->>C: 409 Conflict
     else still valid
-        Svc->>DB: redeem discount code (atomic conditional UPDATE)
-        Svc->>Pay: charge(amount)
+        Svc->>DB: redeem discount code, atomic conditional UPDATE
+        Svc->>Pay: charge amount
         Pay-->>Svc: success
-        Svc->>DB: seats -> BOOKED, booking -> CONFIRMED
+        Svc->>DB: seats to BOOKED, booking to CONFIRMED
         Svc->>DB: COMMIT
-        Svc->>Evt: publish BookingConfirmedEvent (in-transaction)
+        Svc->>Evt: publish BookingConfirmedEvent in transaction
         Svc-->>C: 200 OK
-        Evt-->>Listener: AFTER_COMMIT, @Async
-        Listener->>DB: persist Notification (JSONB payload)
+        Evt-->>Listener: AFTER_COMMIT, async
+        Listener->>DB: persist Notification with JSONB payload
     end
 ```
 
