@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Claude Code (local-machine settings only — skills/*.md are checked in) ###
+.claude/settings.local.json

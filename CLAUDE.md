@@ -1,8 +1,14 @@
 # AI-assisted development workflow
 
-This project was built with [Claude Code](https://claude.com/claude-code) (Sonnet 5). This file
-documents how, per the assignment's submission requirements. The raw implementation plan produced
-during this session is checked in at `docs/ai-workflow/implementation-plan.md`.
+I built this with [Claude Code](https://claude.com/claude-code) (Sonnet 5) as my pair-programming
+tool, and this file documents how, per the assignment's submission requirements. Where I later
+changed my mind about something the plan said, I've noted it — I'd rather this read as an accurate
+account of how the build actually went than as a tidied-up story.
+
+Raw artifacts from the session, checked into the repo:
+- `docs/ai-workflow/implementation-plan.md` — the design plan produced before any code was written.
+- `.claude/skills/arch-guard/SKILL.md` — the project-specific guardrail skill described at the end
+  of this file, written during this session as part of the deliverable, not a pre-existing tool.
 
 ## Sequence of work
 
@@ -65,20 +71,43 @@ during this session is checked in at `docs/ai-workflow/implementation-plan.md`.
    chain, so every request looked unauthenticated regardless of token; a validation annotation
    placement that Hibernate Validator flagged as deprecated) before the suite was trusted.
 
-6. **Documentation last** (this file, `README.md`, `ARCHITECTURE.md`), written to reflect what was
-   actually built and verified, not the original plan sketch — a few implementation details (e.g.
-   how a declined confirm handles the seat hold) were deliberately refined from the initial plan
-   during implementation, and the docs describe the final behavior with the reasoning for the
-   change.
+6. **Documentation, written to match what actually got built**, not the original plan sketch — a
+   few implementation details (e.g. how a declined confirm handles the seat hold) were deliberately
+   refined from the initial plan during implementation, and the docs describe the final behavior
+   with the reasoning for the change, not the earlier draft.
+
+7. **A second pass after I thought I was done.** I asked for a SOLID/design-pattern self-review
+   rather than assuming the architecture was fine because the tests passed. That pass found two
+   real SRP violations (an admin controller that had grown to cover five unrelated resources, and
+   three services each mixing domain logic with admin CRUD for the same resource) and I fixed both
+   — see the "Design patterns and SOLID" section in `ARCHITECTURE.md` for what I found and why. I
+   also went back through the codebase removing places where I'd used a fully-qualified class
+   name inline instead of an import, which is a habit I don't want in a submission meant to be read
+   by someone else.
 
 ## Models and tools used
 
 - **Claude Sonnet 5** — primary implementation model, terminal-based (Claude Code CLI), full
-  read/write/bash/tool access.
+  read/write/bash/tool access, running in this repository directly.
 - **Plan subagent** (one invocation) — independent adversarial review of the concurrency design
-  before implementation began.
-- **Advisor** (multiple invocations) — a second reviewer with visibility into the full session
-  transcript, consulted before committing to the plan and again after the plan was revised, used
-  to catch gaps before they became implementation rework.
-- No custom slash commands or project-specific skills were used beyond what's built into Claude
-  Code (plan mode, the advisor tool, task tracking).
+  before implementation began, specifically tasked with attacking the locking/scheduling design
+  rather than validating it.
+- **Advisor** (several invocations) — a second reviewer with visibility into the full session
+  transcript, consulted before committing to the plan, again after the plan was revised, and once
+  more near the end before I called the submission done. The end-of-session pass is what actually
+  caught a real gap: I'd claimed in an early commit message that the payment-decline path was
+  "tested via a substitute gateway," and it wasn't — the test didn't exist yet. I added it
+  (`PaymentFailureIntegrationTest`) rather than letting the doc oversell what was actually covered.
+- **No built-in Claude Code skills or slash commands were invoked while building the application
+  itself** — the plan-mode workflow, the Plan subagent, and the advisor tool above are what did the
+  heavy lifting, and none of them are project-specific skills.
+- **One project-specific skill did come out of this work**, though, and it's checked into the repo
+  rather than left in my own local Claude Code config: `.claude/skills/arch-guard/SKILL.md`. It's
+  an architectural guardrail for whoever touches this codebase next (including me, in a future
+  session, with no memory of today's reasoning) — it encodes the layer conventions and, more
+  importantly, the handful of correctness rules that aren't obvious from reading any single file in
+  isolation (ordered locking has to live in the SQL, scheduled jobs need claim-then-act, DTO mapping
+  has to happen inside the transactional method, and so on). The intent is that a future change —
+  by me, by another engineer, or by an AI assistant working from this repo without this
+  conversation's context — gets checked against these rules automatically, instead of depending on
+  me being in the room to explain why the seat-locking code looks the way it does.
